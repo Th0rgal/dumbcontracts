@@ -23,11 +23,9 @@ class MappingSlotBoundaryTests(unittest.TestCase):
             root = Path(tmpdir)
             proofs = root / "Compiler" / "Proofs"
             (proofs / "IRGeneration").mkdir(parents=True)
-            (proofs / "YulGeneration" / "ReferenceOracle").mkdir(parents=True)
 
             mapping_slot = proofs / "MappingSlot.lean"
             ir = proofs / "IRGeneration" / "IRInterpreter.lean"
-            builtins = proofs / "YulGeneration" / "ReferenceOracle" / "Builtins.lean"
             trust = root / "TRUST_ASSUMPTIONS.md"
 
             mapping_slot.write_text(
@@ -53,12 +51,6 @@ class MappingSlotBoundaryTests(unittest.TestCase):
                 "def y := Compiler.Proofs.abstractStoreMappingEntry\n",
                 encoding="utf-8",
             )
-            builtins.write_text(
-                "import Compiler.Proofs.MappingSlot\n"
-                "def x := Compiler.Proofs.abstractMappingSlot\n"
-                "def y := Compiler.Proofs.abstractLoadStorageOrMapping\n",
-                encoding="utf-8",
-            )
             trust.write_text(
                 "activeMappingSlotBackend = .keccak\nffi.KEC\n",
                 encoding="utf-8",
@@ -68,7 +60,6 @@ class MappingSlotBoundaryTests(unittest.TestCase):
             old_proofs = check_mapping_slot_boundary.PROOFS_DIR
             old_mapping_slot = check_mapping_slot_boundary.MAPPING_SLOT_FILE
             old_trust = check_mapping_slot_boundary.TRUST_ASSUMPTIONS_FILE
-            old_builtins = check_mapping_slot_boundary.BUILTINS_FILE
             old_allowed = check_mapping_slot_boundary.ALLOWED_MAPPING_ENCODING_IMPORTERS
             old_required = check_mapping_slot_boundary.REQUIRED_ABSTRACTION_IMPORTS
             old_forbidden = check_mapping_slot_boundary.LEGACY_SYMBOL_FORBIDDEN_FILES
@@ -77,7 +68,6 @@ class MappingSlotBoundaryTests(unittest.TestCase):
             check_mapping_slot_boundary.PROOFS_DIR = proofs
             check_mapping_slot_boundary.MAPPING_SLOT_FILE = mapping_slot
             check_mapping_slot_boundary.TRUST_ASSUMPTIONS_FILE = trust
-            check_mapping_slot_boundary.BUILTINS_FILE = builtins
             check_mapping_slot_boundary.ALLOWED_MAPPING_ENCODING_IMPORTERS = set()
             check_mapping_slot_boundary.REQUIRED_ABSTRACTION_IMPORTS = {ir}
             check_mapping_slot_boundary.LEGACY_SYMBOL_FORBIDDEN_FILES = {ir}
@@ -95,7 +85,6 @@ class MappingSlotBoundaryTests(unittest.TestCase):
                 check_mapping_slot_boundary.PROOFS_DIR = old_proofs
                 check_mapping_slot_boundary.MAPPING_SLOT_FILE = old_mapping_slot
                 check_mapping_slot_boundary.TRUST_ASSUMPTIONS_FILE = old_trust
-                check_mapping_slot_boundary.BUILTINS_FILE = old_builtins
                 check_mapping_slot_boundary.ALLOWED_MAPPING_ENCODING_IMPORTERS = old_allowed
                 check_mapping_slot_boundary.REQUIRED_ABSTRACTION_IMPORTS = old_required
                 check_mapping_slot_boundary.LEGACY_SYMBOL_FORBIDDEN_FILES = old_forbidden

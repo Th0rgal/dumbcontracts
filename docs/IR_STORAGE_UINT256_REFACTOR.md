@@ -205,8 +205,6 @@ Deliverables:
 
 ## See also
 
-- [`NATIVE_EVMYULLEAN_TRANSITION.md`](NATIVE_EVMYULLEAN_TRANSITION.md)
-  — the parent transition plan and the per-case bridge status section.
 - [`Compiler/Proofs/EndToEnd.lean`](../Compiler/Proofs/EndToEnd.lean)
   — `simpleStorage_endToEnd_native_evmYulLean` and the
   `simpleStorageNative*Bridge` family.

@@ -1,8 +1,13 @@
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanPureBuiltinLemmas
 
 namespace Compiler.Proofs.YulGeneration.Backends
 
 open Compiler.Proofs.IRGeneration (IRStorageWord IRStorageSlot)
+
+inductive BuiltinBackend where
+  | evmYulLean
+  deriving DecidableEq, Repr
 
 /-- Native EVMYulLean-backed builtin evaluation with full execution context.
 
@@ -67,5 +72,64 @@ def evalBuiltinCallWithEvmYulLean
     (func : String)
     (argVals : List Nat) : Option Nat :=
   evalBuiltinCallWithEvmYulLeanContext storage sender 0 0 0 0 0 0 selector calldata func argVals
+
+def evalBuiltinCallWithBackendContext
+    (_backend : BuiltinBackend)
+    (storage : IRStorageSlot → IRStorageWord)
+    (sender : Nat)
+    (msgValue : Nat)
+    (thisAddress : Nat)
+    (blockTimestamp : Nat)
+    (blockNumber : Nat)
+    (chainId : Nat)
+    (blobBaseFee : Nat)
+    (selector : Nat)
+    (calldata : List Nat)
+    (func : String)
+    (argVals : List Nat) : Option Nat :=
+  evalBuiltinCallWithEvmYulLeanContext storage sender msgValue thisAddress
+    blockTimestamp blockNumber chainId blobBaseFee selector calldata func argVals
+
+def evalBuiltinCallWithBackend
+    (backend : BuiltinBackend)
+    (storage : IRStorageSlot → IRStorageWord)
+    (sender : Nat)
+    (selector : Nat)
+    (calldata : List Nat)
+    (func : String)
+    (argVals : List Nat) : Option Nat :=
+  evalBuiltinCallWithBackendContext backend storage sender 0 0 0 0 0 0 selector calldata func argVals
+
+def evalBuiltinCall
+    (storage : IRStorageSlot → IRStorageWord)
+    (sender : Nat)
+    (selector : Nat)
+    (calldata : List Nat)
+    (func : String)
+    (argVals : List Nat) : Option Nat :=
+  evalBuiltinCallWithEvmYulLean storage sender selector calldata func argVals
+
+/-- Native `byte` semantics in the wrapper used by IR-generation proofs. -/
+@[simp] theorem evalBuiltinCallViaEvmYulLean_byte_uint256
+    (storage : IRStorageSlot → IRStorageWord) (sender selector : Nat) (calldata : List Nat)
+    (index value : Nat) :
+    evalBuiltinCallViaEvmYulLean storage sender selector calldata "byte" [index, value] =
+      some (Verity.Core.Uint256.byte
+        (Verity.Core.Uint256.ofNat (index % Compiler.Constants.evmModulus))
+        (Verity.Core.Uint256.ofNat (value % Compiler.Constants.evmModulus))).val := by
+  simp [evalBuiltinCallViaEvmYulLean]
+
+/-- Context wrapper for `evalBuiltinCallViaEvmYulLean_byte_uint256`. -/
+@[simp] theorem evalBuiltinCallWithEvmYulLeanContext_byte_uint256
+    (storage : IRStorageSlot → IRStorageWord)
+    (sender msgValue thisAddress blockTimestamp blockNumber chainId blobBaseFee selector : Nat)
+    (calldata : List Nat)
+    (index value : Nat) :
+    evalBuiltinCallWithEvmYulLeanContext storage sender msgValue thisAddress blockTimestamp
+      blockNumber chainId blobBaseFee selector calldata "byte" [index, value] =
+      some (Verity.Core.Uint256.byte
+        (Verity.Core.Uint256.ofNat (index % Compiler.Constants.evmModulus))
+        (Verity.Core.Uint256.ofNat (value % Compiler.Constants.evmModulus))).val := by
+  simp [evalBuiltinCallWithEvmYulLeanContext]
 
 end Compiler.Proofs.YulGeneration.Backends

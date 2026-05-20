@@ -1,4 +1,4 @@
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeSignedArithLemmas
 import Mathlib.Data.Nat.Bitwise
 import Verity.Core.Int256
@@ -532,5 +532,90 @@ private theorem xor_all_ones_uint256_word (a : Nat) :
       change 256 ≤ shift % EvmYul.UInt256.size
       exact Nat.not_lt.mp hs
     simp [hs, EvmYul.UInt256.shiftRight, EvmYul.UInt256.toNat, hs']
+
+private theorem nat_land_0xFF (n : Nat) : Nat.land n 255 = n % 256 := by
+  rw [show (255 : Nat) = 2 ^ 8 - 1 from by omega]
+  exact Nat.and_two_pow_sub_one_eq_mod n 8
+
+set_option maxHeartbeats 16000000 in
+private theorem evalPureBuiltinViaEvmYulLean_byte_normalized (index value : Nat) :
+    evalPureBuiltinViaEvmYulLean "byte" [index, value] =
+      (if index % EvmYul.UInt256.size > 31 then some 0
+       else some ((value % EvmYul.UInt256.size /
+          2 ^ ((31 - index % EvmYul.UInt256.size) * 8)) % 256)) := by
+  change some (EvmYul.UInt256.toNat
+      (EvmYul.UInt256.byteAt (EvmYul.UInt256.ofNat index) (EvmYul.UInt256.ofNat value))) = _
+  by_cases hgt : index % EvmYul.UInt256.size > 31
+  · have hgt' : EvmYul.UInt256.ofNat index > (⟨31⟩ : EvmYul.UInt256) := by
+      show (31 : Fin EvmYul.UInt256.size) < (EvmYul.UInt256.ofNat index).val
+      show (31 : Nat) < index % EvmYul.UInt256.size
+      exact hgt
+    simp [hgt, EvmYul.UInt256.byteAt, hgt', EvmYul.UInt256.toNat]
+  · have hle' : ¬(EvmYul.UInt256.ofNat index > (⟨31⟩ : EvmYul.UInt256)) := by
+      show ¬((31 : Fin EvmYul.UInt256.size) < (EvmYul.UInt256.ofNat index).val)
+      show ¬((31 : Nat) < index % EvmYul.UInt256.size)
+      exact hgt
+    have hshift_small : (31 - index % EvmYul.UInt256.size) * 8 < EvmYul.UInt256.size := by
+      unfold EvmYul.UInt256.size; omega
+    have hguard : ¬ 256 ≤ (EvmYul.UInt256.ofNat
+        ((31 - (EvmYul.UInt256.ofNat index).toNat) * 8)).val := by
+      change ¬ 256 ≤ ((31 - index % EvmYul.UInt256.size) * 8) % EvmYul.UInt256.size
+      rw [Nat.mod_eq_of_lt hshift_small]; omega
+    unfold EvmYul.UInt256.byteAt
+    rw [if_neg hle']
+    show some (EvmYul.UInt256.toNat
+        (EvmYul.UInt256.land
+          (EvmYul.UInt256.shiftRight (EvmYul.UInt256.ofNat value)
+            (EvmYul.UInt256.ofNat ((31 - (EvmYul.UInt256.ofNat index).toNat) * 8)))
+          ⟨255⟩)) = _
+    unfold EvmYul.UInt256.shiftRight
+    rw [if_neg hguard]
+    simp only [hgt, ite_false, EvmYul.UInt256.land, EvmYul.UInt256.toNat,
+      EvmYul.UInt256.ofNat, Id.run, Fin.land, Fin.shiftRight, Fin.ofNat,
+      Nat.shiftRight_eq_div_pow]
+    rw [Nat.mod_eq_of_lt hshift_small]
+    rw [show (255 : Nat) % EvmYul.UInt256.size = 255 from by unfold EvmYul.UInt256.size; omega]
+    have hdiv_lt :
+        value % EvmYul.UInt256.size / 2 ^ ((31 - index % EvmYul.UInt256.size) * 8) <
+          EvmYul.UInt256.size :=
+      Nat.lt_of_le_of_lt (Nat.div_le_self _ _)
+        (Nat.mod_lt value (by unfold EvmYul.UInt256.size; omega))
+    rw [Nat.mod_eq_of_lt hdiv_lt]
+    rw [nat_land_0xFF]
+    have hmod256_lt_size :
+        (value % EvmYul.UInt256.size / 2 ^ ((31 - index % EvmYul.UInt256.size) * 8)) %
+          256 < EvmYul.UInt256.size :=
+      Nat.lt_trans (Nat.mod_lt _ (by omega)) (by unfold EvmYul.UInt256.size; omega)
+    rw [Nat.mod_eq_of_lt hmod256_lt_size]
+
+@[simp] theorem evalPureBuiltinViaEvmYulLean_byte_native (index value : Nat) :
+    evalPureBuiltinViaEvmYulLean "byte" [index, value] =
+      some (Verity.Core.Uint256.byte
+        (Verity.Core.Uint256.ofNat (index % Compiler.Constants.evmModulus))
+        (Verity.Core.Uint256.ofNat (value % Compiler.Constants.evmModulus))).val := by
+  rw [evalPureBuiltinViaEvmYulLean_byte_normalized]
+  have hindexMod :
+      index % Compiler.Constants.evmModulus % Verity.Core.Uint256.modulus =
+        index % Compiler.Constants.evmModulus := by
+    simp [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS, Compiler.Constants.evmModulus]
+  have hvalueMod :
+      value % Compiler.Constants.evmModulus % Verity.Core.Uint256.modulus =
+        value % Compiler.Constants.evmModulus := by
+    simp [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS, Compiler.Constants.evmModulus]
+  rw [uint256_size_eq_evmModulus]
+  simp [Verity.Core.Uint256.byte, hindexMod, hvalueMod]
+  by_cases hgt : 31 < index % Compiler.Constants.evmModulus
+  · simp [hgt]
+  · simp [hgt, Nat.shiftRight_eq_div_pow]
+    rw [show (255 : Nat) = 2 ^ 8 - 1 by omega]
+    rw [Nat.and_two_pow_sub_one_eq_mod]
+    rw [show (2 ^ 8 : Nat) = 256 by norm_num]
+    have hlt :
+        (value % Compiler.Constants.evmModulus /
+            2 ^ ((31 - index % Compiler.Constants.evmModulus) * 8)) %
+          256 < Verity.Core.Uint256.modulus :=
+      Nat.lt_trans (Nat.mod_lt _ (by decide : 0 < 256))
+        (by norm_num [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS])
+    rw [Nat.mod_eq_of_lt hlt]
 
 end Compiler.Proofs.YulGeneration.Backends

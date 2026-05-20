@@ -36,8 +36,6 @@ Compiler.Proofs.YulGeneration.Backends.EvmYulLeanStateBridge
 Compiler.Proofs.YulGeneration.Calldata
 Compiler.Proofs.YulGeneration.IRFuel
 Compiler.Proofs.YulGeneration.LogNames
-Compiler.Proofs.YulGeneration.ReferenceOracle.Builtins
-Compiler.Proofs.YulGeneration.ReferenceOracle.State
 Compiler.Proofs.YulGeneration.PatchRulesProofs
 Compiler.Proofs.YulGeneration.RuntimeTypes
 #

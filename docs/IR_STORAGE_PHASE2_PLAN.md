@@ -80,6 +80,5 @@ the carrier flip, to:
 ## Status
 
 Superseded for the public native SimpleStorage theorem. The direct retrieve-hit
-proof is `simpleStorageNativeRetrieveHitMatchBridge_proved`; the generic
-compatibility cleanup remains tracked in
-[`NATIVE_EVMYULLEAN_TRANSITION.md`](NATIVE_EVMYULLEAN_TRANSITION.md).
+proof is `simpleStorageNativeRetrieveHitMatchBridge_proved`; remaining generic
+compatibility work is tracked in the active native EndToEnd theorem surface.

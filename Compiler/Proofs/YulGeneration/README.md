@@ -5,26 +5,22 @@ This directory contains the verification proofs for Layer 3 (IR → Yul) of the 
 **Status**: native EVMYulLean dispatcher execution is the public Layer 3
 target. The active end-to-end native surface is the
 `EvmYul.Yul.callDispatcher` theorem stack in `Compiler/Proofs/EndToEnd.lean`.
-The old fuel-parametric custom Yul executor, preservation stack, and
-`EvmYulLeanRetarget.lean` bridge have been removed. The remaining
-`ReferenceOracle` files are builtin comparison helpers used below the public
-trust boundary, not an alternate compiler-correctness target.
+The old fuel-parametric custom Yul executor, preservation stack, and private
+retarget bridge have been removed. Native EVMYulLean dispatch is the only
+checked-in builtin semantics surface.
 
 ## File Overview
-
-- **`ReferenceOracle/Builtins.lean`** - Legacy builtin comparison oracle
-  - Defines the Verity-side builtin evaluator used by bridge lemmas
-  - Proves agreement with the EVMYulLean-backed builtin evaluator
-  - Kept out of the public EndToEnd semantic target
-
-- **`ReferenceOracle/State.lean`** - Compatibility re-export for shared
-  runtime state types
 
 - **`Backends/EvmYulLeanNativeHarness.lean`** - Native EVMYulLean execution
   harness
   - Lowers emitted runtime code to executable EVMYulLean contracts
   - Provides the native `callDispatcher` result surface used by the active
     end-to-end theorem stack
+
+- **`Backends/EvmYulLeanNativeLowering.lean`** - Native runtime lowering
+  - Maps supported emitted Yul builtins to EVMYulLean primops
+  - Lowers generated runtime statements and function definitions into native
+    EVMYulLean contracts
 
 - **`Backends/EvmYulLeanBodyClosure.lean`** - Native safe-body closure layer
   - Packages supported source fragments into `BridgedSafeStmts`

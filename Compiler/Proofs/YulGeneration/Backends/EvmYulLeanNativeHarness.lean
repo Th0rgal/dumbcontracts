@@ -1,4 +1,4 @@
-import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanAdapter
+import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanNativeLowering
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanBridgePredicates
 import Compiler.Proofs.YulGeneration.Backends.EvmYulLeanStateBridge
 import Compiler.Proofs.YulGeneration.RuntimeTypes

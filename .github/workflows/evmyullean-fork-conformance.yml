@@ -5,7 +5,7 @@ name: EVMYulLean fork conformance
 # report artifacts are in sync, adapter correctness still builds,
 # all universal bridge lemmas still build, the native transition harness still
 # builds, emitted dispatcher native/reference oracle coverage still passes, the
-# public EndToEnd EVMYulLean target still builds, and all 123 concrete
+# public EndToEnd EVMYulLean target still builds, and all 0 concrete
 # `native_decide` bridge-equivalence tests still pass.
 #
 # On scheduled or manual failure the probe job exits red and the
@@ -37,7 +37,6 @@ on:
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean'
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSourceExprClosure.lean'
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanStateBridge.lean'
-      - 'Compiler/Proofs/YulGeneration/ReferenceOracle/Builtins.lean'
   pull_request:
     paths:
       - '.github/workflows/evmyullean-fork-conformance.yml'
@@ -57,7 +56,6 @@ on:
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean'
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSourceExprClosure.lean'
       - 'Compiler/Proofs/YulGeneration/Backends/EvmYulLeanStateBridge.lean'
-      - 'Compiler/Proofs/YulGeneration/ReferenceOracle/Builtins.lean'
 
 permissions:
   contents: read

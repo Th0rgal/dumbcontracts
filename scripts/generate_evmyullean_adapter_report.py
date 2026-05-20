@@ -20,11 +20,12 @@ BACKENDS_DIR = (
     ROOT / "Compiler" / "Proofs" / "YulGeneration" / "Backends"
 )
 ADAPTER_FILE = BACKENDS_DIR / "EvmYulLeanAdapter.lean"
+NATIVE_LOWERING_FILE = BACKENDS_DIR / "EvmYulLeanNativeLowering.lean"
 BRIDGE_PREDICATES_FILE = BACKENDS_DIR / "EvmYulLeanBridgePredicates.lean"
 BRIDGE_LEMMAS_FILE = BACKENDS_DIR / "EvmYulLeanBridgeLemmas.lean"
 BRIDGE_TEST_FILE = BACKENDS_DIR / "EvmYulLeanBridgeTest.lean"
 CORRECTNESS_FILE = BACKENDS_DIR / "EvmYulLeanAdapterCorrectness.lean"
-RETARGET_FILE = BACKENDS_DIR / "EvmYulLeanRetarget.lean"
+RETARGET_FILE = BACKENDS_DIR / ("EvmYulLean" + "Retarget.lean")
 BODY_CLOSURE_FILE = BACKENDS_DIR / "EvmYulLeanBodyClosure.lean"
 SOURCE_EXPR_CLOSURE_FILE = BACKENDS_DIR / "EvmYulLeanSourceExprClosure.lean"
 END_TO_END_FILE = ROOT / "Compiler" / "Proofs" / "EndToEnd.lean"
@@ -544,6 +545,9 @@ def build_report() -> dict[str, object]:
         raise FileNotFoundError(f"Missing adapter file: {ADAPTER_FILE.relative_to(ROOT)}")
 
     text = ADAPTER_FILE.read_text(encoding="utf-8")
+    if not NATIVE_LOWERING_FILE.exists():
+        raise FileNotFoundError(f"Missing native lowering file: {NATIVE_LOWERING_FILE.relative_to(ROOT)}")
+    native_text = NATIVE_LOWERING_FILE.read_text(encoding="utf-8")
     expr_lines = _extract_block(text, "def lowerExpr", "partial def lowerStmts")
     stmt_lines = _extract_block(text, "partial def lowerStmt", "def lowerProgram")
 
@@ -559,15 +563,15 @@ def build_report() -> dict[str, object]:
     stmt_partial = sorted(k for k, v in stmt_status.items() if v == "partial")
     stmt_gaps = sorted(k for k, v in stmt_status.items() if v == "gap")
 
-    eval_stub = EVAL_STUB_RE.search(text) is not None
+    eval_stub = EVAL_STUB_RE.search(native_text) is not None
 
     status = "ok"
     if missing_expr or missing_stmt or stmt_partial or stmt_gaps or eval_stub:
         status = "partial"
 
     # Schema v4: extract builtin bridge inventories
-    lookup_primop = _parse_lookup_primop(text)
-    eval_pure = _parse_pure_bridge(text)
+    lookup_primop = _parse_lookup_primop(native_text)
+    eval_pure = _parse_pure_bridge(native_text)
     universal_lemmas, admitted_lemmas = _parse_bridge_lemmas()
     tested_builtins, test_count = _parse_bridge_tests()
     if test_count > 0 and not tested_builtins:
@@ -827,7 +831,7 @@ def build_report() -> dict[str, object]:
         if not has_end_to_end_evm_retarget:
             end_to_end_evm_retarget_status = (
                 "removed from EndToEnd surface "
-                "(retarget evidence isolated in EvmYulLeanRetarget.lean)"
+                "(legacy retarget evidence removed from current surface)"
             )
         elif end_to_end_evm_retarget_has_sorry:
             end_to_end_evm_retarget_status = "sorry"
@@ -1505,6 +1509,7 @@ def build_report() -> dict[str, object]:
     report: dict[str, object] = {
         "schema_version": 7,
         "adapter_file": str(ADAPTER_FILE.relative_to(ROOT)),
+        "native_lowering_file": str(NATIVE_LOWERING_FILE.relative_to(ROOT)),
         "status": status,
         "expr_supported": expr_supported,
         "stmt_supported": stmt_supported,

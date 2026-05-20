@@ -18,11 +18,10 @@ open Compiler.Proofs.IRGeneration
 /-!
 Executable native EVMYulLean runtime harness for #1737.
 
-This module deliberately sits beside the historical adapter.  The adapter is
-part of the existing proof/report dependency graph; importing the state bridge
-there would create a cycle through the reference oracle.  Keeping the native
-harness separate lets tests and future proofs run `EvmYul.Yul.callDispatcher`
-directly without disturbing the current verified backend path.
+This module owns the executable native runtime boundary. Keeping it separate
+from the pure lowering and bridge-predicate modules lets tests and proofs run
+`EvmYul.Yul.callDispatcher` directly while avoiding import cycles through the
+state projection layer.
 -/
 
 /-- Build a native EVMYulLean state for a generated runtime contract.

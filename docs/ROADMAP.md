@@ -28,9 +28,9 @@ This tracker is the execution order for migration-oriented compiler work. Later 
 | P2 | Interop + verification docs hardening | [#585](https://github.com/lfglabs-dev/verity/issues/585), [#586](https://github.com/lfglabs-dev/verity/issues/586) | blocked by P0/P1 outputs | Generated verification artifact consumed by docs + published interop support profile |
 
 Current P0 baseline artifact coverage:
-- `artifacts/evmyullean_capability_report.json` tracks builtin overlap boundaries and explicit unsupported adapter nodes.
-- `artifacts/evmyullean_unsupported_nodes.json` provides a dedicated machine-readable unsupported-node list for adapter-lowering gaps.
-- `artifacts/evmyullean_adapter_report.json` tracks adapter AST-lowering coverage (`supported`/`partial`/`gap`) and runtime seam status.
+- `artifacts/evmyullean_capability_report.json` tracks builtin overlap boundaries and explicit unsupported native-lowering nodes.
+- `artifacts/evmyullean_unsupported_nodes.json` provides a dedicated machine-readable unsupported-node list for native-lowering gaps.
+- `artifacts/evmyullean_adapter_report.json` tracks native AST-lowering coverage (`supported`/`partial`/`gap`) and runtime boundary status.
 
 Current P1 foundation coverage (Issue #582):
 - Deterministic expression patch DSL + pass engine in `Compiler/Yul/PatchFramework.lean`

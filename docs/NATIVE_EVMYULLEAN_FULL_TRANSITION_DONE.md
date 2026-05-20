@@ -1,13 +1,13 @@
 # Full Native EVMYulLean Transition: Definition Of Done
 
-This document records the completed transition from Verity's former custom Yul
+This document records the completed transition from Verity's former Yul
 interpreter path to native EVMYulLean execution as the authoritative
 compiler-verification target.
 
 The SimpleStorage native theorem discharges its retrieve, store, and selector
 bridge cases, and the public generated-dispatcher theorem family targets native
 EVMYulLean dispatcher execution. Removed transition evidence used to record a
-custom Yul statement-interpreter path through the EVMYulLean-backed builtin
+Verity-side Yul statement-interpreter path through the EVMYulLean-backed builtin
 backend:
 
 ```lean
@@ -16,11 +16,9 @@ interpretYulRuntimeWithBackend .evmYulLean
 
 The removed transition theorem name
 `yulCodegen_preserves_semantics_evmYulLeanBackend_via_reference_oracle` marks
-the old shape: composing Layer 3 through the reference oracle before rewriting
-to an EVMYulLean-backed builtin executor. The final transition is complete only
-when the public compiler-correctness theorem targets native EVMYulLean execution
-directly, or an equivalent wrapper whose only execution engine is
-`EvmYul.Yul.callDispatcher`. That condition is now satisfied on `main`.
+the old shape that has now been deleted. The public compiler-correctness
+theorem targets native EVMYulLean execution directly through
+`EvmYul.Yul.callDispatcher`; that condition is satisfied on `main`.
 
 ## Current Baseline
 

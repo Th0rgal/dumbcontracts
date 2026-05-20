@@ -49,7 +49,7 @@ class EVMYulLeanCapabilityExtractionTests(unittest.TestCase):
             builtins_file = Path(tmpdir) / "Builtins.lean"
             builtins_file.write_text(
                 "namespace X\n\n"
-                "def evalBuiltinCallWithBackendContext (func : String) : Option Nat :=\n"
+                "def evalBuiltinCallWithNonNativeContext (func : String) : Option Nat :=\n"
                 "  if func = \"address\" then some 1 else none\n\n"
                 "def evalBuiltinCallWithEvmYulLeanContext (func : String) : Option Nat :=\n"
                 "  if func = \"add\" then some 1 else none\n",

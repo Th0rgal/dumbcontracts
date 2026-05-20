@@ -386,7 +386,7 @@ N8 public Layer 3 theorem flip
 - **Blocks**: eventual cleanup only
 - **Status**: not started.
 - **Definition of done**:
-  - The custom interpreter path is absent from the checked-in public proof tree.
+  - The former Verity-side interpreter path is absent from the checked-in public proof tree.
   - Historical comparisons, if reintroduced, stay outside the authoritative
     public semantic-preservation path.
 - **Verification**:

@@ -758,6 +758,12 @@ def evalExpr (fields : List Field) (state : RuntimeState) : Expr → Option Nat
       pure (Verity.Core.Int256.sar
         (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat lhs))
         (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat rhs))).toUint256.val
+  | .byte a b => do
+      let index ← evalExpr fields state a
+      let value ← evalExpr fields state b
+      pure (Verity.Core.Uint256.byte
+        (Verity.Core.Uint256.ofNat index)
+        (Verity.Core.Uint256.ofNat value)).val
   | .signextend a b => do
       let byteIdx ← evalExpr fields state a
       let value ← evalExpr fields state b
@@ -1319,6 +1325,17 @@ private theorem evalExpr_sar
       pure (Verity.Core.Int256.sar
         (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat lhs))
         (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat rhs))).toUint256.val) := rfl
+
+private theorem evalExpr_byte
+    (fields : List Field)
+    (state : RuntimeState)
+    (index value : Expr) :
+    evalExpr fields state (.byte index value) = (do
+      let i ← evalExpr fields state index
+      let v ← evalExpr fields state value
+      pure (Verity.Core.Uint256.byte
+        (Verity.Core.Uint256.ofNat i)
+        (Verity.Core.Uint256.ofNat v)).val) := rfl
 
 private theorem evalExpr_signextend
     (fields : List Field)
@@ -2686,6 +2703,12 @@ mutual
         pure (Verity.Core.Int256.sar
           (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat lhs))
           (Verity.Core.Int256.ofUint256 (Verity.Core.Uint256.ofNat rhs))).toUint256.val
+    | .byte a b => do
+        let index ← evalExprWithHelpers spec fields fuel state a
+        let value ← evalExprWithHelpers spec fields fuel state b
+        pure (Verity.Core.Uint256.byte
+          (Verity.Core.Uint256.ofNat index)
+          (Verity.Core.Uint256.ofNat value)).val
     | .signextend a b => do
         let byteIdx ← evalExprWithHelpers spec fields fuel state a
         let value ← evalExprWithHelpers spec fields fuel state b
@@ -3802,6 +3825,13 @@ mutual
         have hb :=
           evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed spec fields fuel state b hsurface.2
         simpa [evalExprWithHelpers, evalExpr_sar, ha, hb]
+    | byte a b =>
+        simp only [exprTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
+        have ha :=
+          evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed spec fields fuel state a hsurface.1
+        have hb :=
+          evalExprWithHelpers_eq_evalExpr_of_helperSurfaceClosed spec fields fuel state b hsurface.2
+        simpa [evalExprWithHelpers, evalExpr_byte, ha, hb]
     | signextend a b =>
         simp only [exprTouchesUnsupportedHelperSurface, Bool.or_eq_false_iff] at hsurface
         have ha :=

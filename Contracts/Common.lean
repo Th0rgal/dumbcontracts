@@ -163,6 +163,9 @@ def sar (shift value : Uint256) : Uint256 :=
     let divisor := Int.ofNat (pow2 shiftNat)
     signedToWord (Int.ediv (wordToSigned value) divisor)
 
+def byte (index value : Uint256) : Uint256 :=
+  Verity.Core.Uint256.byte index value
+
 def signextend (byteIndex value : Uint256) : Uint256 :=
   let idx : Nat := byteIndex
   if idx >= 32 then

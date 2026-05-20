@@ -3204,7 +3204,7 @@ private theorem exprCompileCore_of_exprTouchesUnsupportedContractSurface_eq_fals
   | .logicalAnd a b, hsurface | .logicalOr a b, hsurface
   | .shl a b, hsurface | .shr a b, hsurface | .slt a b, hsurface | .sgt a b, hsurface
   | .sdiv a b, hsurface | .smod a b, hsurface | .sar a b, hsurface
-  | .signextend a b, hsurface | .min a b, hsurface | .max a b, hsurface
+  | .byte a b, hsurface | .signextend a b, hsurface | .min a b, hsurface | .max a b, hsurface
   | .ceilDiv a b, hsurface =>
       simp only [exprTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
       constructor
@@ -3721,7 +3721,7 @@ private theorem exprBoundNamesInScope_of_validateScopedExprIdentifiers_core
   | bitOr hL hR ihL ihR
   | bitXor hL hR ihL ihR
   | slt hL hR ihL ihR | sgt hL hR ihL ihR | sdiv hL hR ihL ihR
-  | smod hL hR ihL ihR | sar hL hR ihL ihR | signextend hL hR ihL ihR =>
+  | smod hL hR ihL ihR | sar hL hR ihL ihR | byte hL hR ihL ihR | signextend hL hR ihL ihR =>
       rename_i lhs rhs
       have hpair :
           (do
@@ -4634,7 +4634,7 @@ private theorem collectExprNames_mem_exprBoundNames_of_core
   | shl hL hR ihL ihR | shr hL hR ihL ihR | min hL hR ihL ihR | max hL hR ihL ihR
   | ceilDiv hL hR ihL ihR | wMulDown hL hR ihL ihR | wDivUp hL hR ihL ihR
   | slt hL hR ihL ihR | sgt hL hR ihL ihR | sdiv hL hR ihL ihR
-  | smod hL hR ihL ihR | sar hL hR ihL ihR | signextend hL hR ihL ihR =>
+  | smod hL hR ihL ihR | sar hL hR ihL ihR | byte hL hR ihL ihR | signextend hL hR ihL ihR =>
       intro name hmem
       simp [collectExprNames, FunctionBody.exprBoundNames] at hmem ⊢
       rcases hmem with hmem | hmem

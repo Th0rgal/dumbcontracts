@@ -406,6 +406,96 @@ verity_contract MulDiv512Smoke where
     setStorage lastCeil q
     return q
 
+verity_contract ByteBuiltinSmoke where
+  storage
+    extracted : Uint256 := slot 0
+
+  constants
+    highByte : Uint256 := (byte 0 (shl 248 0xab))
+    lowByte : Uint256 := (byte 31 0xff)
+    outOfBoundsByte : Uint256 := (byte 32 0xff)
+
+  function extract (index : Uint256, word : Uint256) : Uint256 := do
+    return (byte index word)
+
+  function highByteConstant () : Uint256 := do
+    return highByte
+
+  function lowByteConstant () : Uint256 := do
+    return lowByte
+
+  function outOfBoundsByteConstant () : Uint256 := do
+    return outOfBoundsByte
+
+  function storeExtracted (index : Uint256, word : Uint256) : Uint256 := do
+    let result := byte index word
+    setStorage extracted result
+    return result
+
+example :
+    ByteBuiltinSmoke.extract_modelBody =
+      [ Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.byte
+            (Compiler.CompilationModel.Expr.param "index")
+            (Compiler.CompilationModel.Expr.param "word"))
+      ] := rfl
+
+example :
+    ByteBuiltinSmoke.storeExtracted_modelBody =
+      [ Compiler.CompilationModel.Stmt.letVar
+          "result"
+          (Compiler.CompilationModel.Expr.byte
+            (Compiler.CompilationModel.Expr.param "index")
+            (Compiler.CompilationModel.Expr.param "word"))
+      , Compiler.CompilationModel.Stmt.setStorage
+          "extracted"
+          (Compiler.CompilationModel.Expr.localVar "result")
+      , Compiler.CompilationModel.Stmt.return
+          (Compiler.CompilationModel.Expr.localVar "result")
+      ] := rfl
+
+def byteBuiltinExecutableExtractsHighByte : Bool :=
+  match ByteBuiltinSmoke.extract 0 (shl 248 0xab) Verity.defaultState with
+  | .success result state =>
+      result == (0xab : Uint256) && state.sender == Verity.defaultState.sender
+  | .revert _ _ => false
+
+example : byteBuiltinExecutableExtractsHighByte = true := by decide
+
+def byteBuiltinExecutableExtractsLowByte : Bool :=
+  match ByteBuiltinSmoke.extract 31 (0xff : Uint256) Verity.defaultState with
+  | .success result state =>
+      result == (0xff : Uint256) && state.sender == Verity.defaultState.sender
+  | .revert _ _ => false
+
+example : byteBuiltinExecutableExtractsLowByte = true := by decide
+
+def byteBuiltinExecutableZeroesOutOfBoundsIndex : Bool :=
+  match ByteBuiltinSmoke.extract 32 (0xff : Uint256) Verity.defaultState with
+  | .success result state =>
+      result == (0 : Uint256) && state.sender == Verity.defaultState.sender
+  | .revert _ _ => false
+
+example : byteBuiltinExecutableZeroesOutOfBoundsIndex = true := by decide
+
+def byteBuiltinConstantsUseByteSemantics : Bool :=
+  match ByteBuiltinSmoke.highByteConstant Verity.defaultState,
+      ByteBuiltinSmoke.lowByteConstant Verity.defaultState,
+      ByteBuiltinSmoke.outOfBoundsByteConstant Verity.defaultState with
+  | .success high _, .success low _, .success outOfBounds _ =>
+      high == (0xab : Uint256) && low == (0xff : Uint256) && outOfBounds == (0 : Uint256)
+  | _, _, _ => false
+
+example : byteBuiltinConstantsUseByteSemantics = true := by decide
+
+def byteBuiltinExecutableStoresExtractedByte : Bool :=
+  match ByteBuiltinSmoke.storeExtracted 31 (0xff : Uint256) Verity.defaultState with
+  | .success result state =>
+      result == (0xff : Uint256) && state.storage 0 == (0xff : Uint256)
+  | .revert _ _ => false
+
+example : byteBuiltinExecutableStoresExtractedByte = true := by decide
+
 verity_contract SignedBuiltinSmoke where
   storage
     signedSlot : Int256 := slot 0
@@ -2370,6 +2460,7 @@ end SpecGenSmoke
 #check_contract SafeMulRequireSmoke
 #check_contract ArithmeticPanicSmoke
 #check_contract MulDiv512Smoke
+#check_contract ByteBuiltinSmoke
 #check_contract SignedBuiltinSmoke
 #check_contract StatelessSmoke
 #check_contract SpecialEntrypointSmoke

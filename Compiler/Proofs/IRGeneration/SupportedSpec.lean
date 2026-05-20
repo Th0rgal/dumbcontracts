@@ -583,7 +583,7 @@ def exprTouchesUnsupportedConstructorRawCalldataSurface : Expr → Bool
   | .logicalAnd a b | .logicalOr a b | .shl a b | .shr a b
   | .bitAnd a b | .bitOr a b | .bitXor a b | .min a b | .max a b
   | .wMulDown a b | .wDivUp a b | .ceilDiv a b | .slt a b | .sgt a b
-  | .sdiv a b | .smod a b | .sar a b | .signextend a b =>
+  | .sdiv a b | .smod a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedConstructorRawCalldataSurface a ||
         exprTouchesUnsupportedConstructorRawCalldataSurface b
   | .mapping2 _ a b | .mapping2Word _ a b _ | .structMember2 _ a b _ =>
@@ -719,7 +719,7 @@ def exprTouchesUnsupportedCoreSurface : Expr → Bool
   | .mulDivDown a b c | .mulDivUp a b c =>
       exprTouchesUnsupportedCoreSurface a || exprTouchesUnsupportedCoreSurface b ||
         exprTouchesUnsupportedCoreSurface c
-  | .slt a b | .sgt a b | .sdiv a b | .smod a b | .sar a b | .signextend a b =>
+  | .slt a b | .sgt a b | .sdiv a b | .smod a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedCoreSurface a || exprTouchesUnsupportedCoreSurface b
   | .mload a | .tload a | .calldataload a => exprTouchesUnsupportedCoreSurface a
   -- `mulDiv512Down/Up` (verity#1761) and `paramDynamicHeadWord` (verity#1832)
@@ -772,7 +772,7 @@ def exprTouchesUnsupportedStateSurface : Expr → Bool
       exprTouchesUnsupportedStateSurface cond ||
         exprTouchesUnsupportedStateSurface thenVal ||
         exprTouchesUnsupportedStateSurface elseVal
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedStateSurface a || exprTouchesUnsupportedStateSurface b
   | .mulDivDown a b c | .mulDivUp a b c
   | .mulDiv512Down a b c | .mulDiv512Up a b c =>
@@ -845,7 +845,7 @@ def exprTouchesUnsupportedCallSurface : Expr → Bool
       exprTouchesUnsupportedCallSurface a ||
         exprTouchesUnsupportedCallSurface b ||
         exprTouchesUnsupportedCallSurface c
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedCallSurface a || exprTouchesUnsupportedCallSurface b
   | .dynamicBytesEq _ _ => false
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -899,7 +899,7 @@ def exprTouchesUnsupportedHelperSurface : Expr → Bool
       exprTouchesUnsupportedHelperSurface a ||
         exprTouchesUnsupportedHelperSurface b ||
         exprTouchesUnsupportedHelperSurface c
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedHelperSurface a || exprTouchesUnsupportedHelperSurface b
   | .dynamicBytesEq _ _ => false
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -964,7 +964,7 @@ def exprTouchesInternalHelperSurface : Expr → Bool
       exprTouchesInternalHelperSurface a ||
         exprTouchesInternalHelperSurface b ||
         exprTouchesInternalHelperSurface c
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesInternalHelperSurface a || exprTouchesInternalHelperSurface b
   | .dynamicBytesEq _ _ => false
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -1019,7 +1019,7 @@ def exprTouchesUnsupportedForeignSurface : Expr → Bool
       exprTouchesUnsupportedForeignSurface a ||
         exprTouchesUnsupportedForeignSurface b ||
         exprTouchesUnsupportedForeignSurface c
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedForeignSurface a || exprTouchesUnsupportedForeignSurface b
   | .dynamicBytesEq _ _ => false
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -1073,7 +1073,7 @@ def exprTouchesUnsupportedLowLevelSurface : Expr → Bool
       exprTouchesUnsupportedLowLevelSurface a ||
         exprTouchesUnsupportedLowLevelSurface b ||
         exprTouchesUnsupportedLowLevelSurface c
-  | .shl a b | .shr a b | .sar a b | .signextend a b =>
+  | .shl a b | .shr a b | .sar a b | .byte a b | .signextend a b =>
       exprTouchesUnsupportedLowLevelSurface a || exprTouchesUnsupportedLowLevelSurface b
   | .dynamicBytesEq _ _ => false
   | .adtConstruct _ _ _ | .adtTag _ _ | .adtField _ _ _ _ _ => true
@@ -1094,7 +1094,7 @@ def exprTouchesUnsupportedContractSurface (expr : Expr) : Bool :=
   | .ge a b | .gt a b | .lt a b | .le a b
   | .logicalAnd a b | .logicalOr a b
   | .shl a b | .shr a b | .slt a b | .sgt a b | .sdiv a b | .smod a b | .sar a b
-  | .signextend a b =>
+  | .byte a b | .signextend a b =>
       exprTouchesUnsupportedContractSurface a || exprTouchesUnsupportedContractSurface b
   | .bitNot a | .logicalNot a => exprTouchesUnsupportedContractSurface a
   | .min a b | .max a b | .ceilDiv a b =>
@@ -1762,7 +1762,7 @@ mutual
         exprInternalHelperCallNames offset ++ exprInternalHelperCallNames size
     | .add a b | .sub a b | .mul a b | .div a b | .sdiv a b | .mod a b | .smod a b
     | .bitAnd a b | .bitOr a b | .bitXor a b | .shl a b | .shr a b | .sar a b
-    | .signextend a b | .eq a b | .ge a b | .gt a b | .sgt a b | .lt a b
+    | .byte a b | .signextend a b | .eq a b | .ge a b | .gt a b | .sgt a b | .lt a b
     | .slt a b | .le a b | .logicalAnd a b | .logicalOr a b | .wMulDown a b
     | .wDivUp a b | .min a b | .max a b | .ceilDiv a b =>
         exprInternalHelperCallNames a ++ exprInternalHelperCallNames b
@@ -2457,7 +2457,7 @@ private theorem exprCompileCore_helperSurfaceClosed
     | max _ _ ihL ihR
     | ceilDiv _ _ ihL ihR | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprTouchesUnsupportedHelperSurface, ihL, ihR, Bool.or_false, Bool.false_or]
   | logicalNot _ ih | bitNot _ ih | tload _ ih | calldataload _ ih | mload _ ih =>
       simp only [exprTouchesUnsupportedHelperSurface, ih]
@@ -2497,7 +2497,7 @@ private theorem exprCompileCore_internalHelperCallNames_nil
     | max _ _ ihL ihR
     | ceilDiv _ _ ihL ihR | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprInternalHelperCallNames, ihL, ihR, List.nil_append]
   | logicalNot _ ih | bitNot _ ih | tload _ ih | calldataload _ ih | mload _ ih =>
       simp only [exprInternalHelperCallNames, ih]
@@ -3283,7 +3283,7 @@ mutual
         simp [exprTouchesInternalHelperSurface,
           exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed ha,
           exprTouchesInternalHelperSurface_eq_false_of_helperSurfaceClosed hb]
-    | shl a b | shr a b | sar a b | signextend a b =>
+    | shl a b | shr a b | sar a b | byte a b | signextend a b =>
         simp only [exprTouchesUnsupportedHelperSurface] at hsurface
         have ⟨ha, hb⟩ := Bool.or_eq_false_iff.mp hsurface
         simp [exprTouchesInternalHelperSurface,
@@ -3750,7 +3750,7 @@ private theorem exprTouchesUnsupportedCallSurface_eq_featureOr
           exprTouchesUnsupportedCallSurface_eq_featureOr b,
           exprTouchesUnsupportedCallSurface_eq_featureOr c]
       simp [Bool.or_assoc, Bool.or_left_comm, Bool.or_comm]
-  | shl a b | shr a b | sar a b | signextend a b =>
+  | shl a b | shr a b | sar a b | byte a b | signextend a b =>
       simp only [exprTouchesUnsupportedCallSurface, exprTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedForeignSurface, exprTouchesUnsupportedLowLevelSurface]
       rw [exprTouchesUnsupportedCallSurface_eq_featureOr a,
@@ -3892,7 +3892,7 @@ private theorem exprTouchesUnsupportedContractSurface_eq_false_of_featureClosed
   | lt lhs rhs | le lhs rhs
   | logicalAnd lhs rhs | logicalOr lhs rhs
   | shl lhs rhs | shr lhs rhs | slt lhs rhs | sgt lhs rhs
-  | sdiv lhs rhs | smod lhs rhs | sar lhs rhs | signextend lhs rhs =>
+  | sdiv lhs rhs | smod lhs rhs | sar lhs rhs | byte lhs rhs | signextend lhs rhs =>
       simp only [exprTouchesUnsupportedCoreSurface, Bool.or_eq_false_iff] at hcore
       simp only [exprTouchesUnsupportedStateSurface, Bool.or_eq_false_iff] at hstate
       simp only [exprTouchesUnsupportedCallSurface, Bool.or_eq_false_iff] at hcalls
@@ -4004,7 +4004,7 @@ private theorem exprTouchesUnsupportedCallSurface_eq_false_of_coreClosed
       simp [exprTouchesUnsupportedCallSurface,
         exprTouchesUnsupportedCallSurface_eq_false_of_coreClosed a hcore]
   | shl a b | shr a b | slt a b | sgt a b | sdiv a b | smod a b | sar a b
-  | signextend a b | bitAnd a b | bitOr a b | bitXor a b | min a b | max a b =>
+  | byte a b | signextend a b | bitAnd a b | bitOr a b | bitXor a b | min a b | max a b =>
       simp only [exprTouchesUnsupportedCoreSurface, Bool.or_eq_false_iff] at hcore
       simp [exprTouchesUnsupportedCallSurface,
         exprTouchesUnsupportedCallSurface_eq_false_of_coreClosed a hcore.1,
@@ -4286,7 +4286,7 @@ theorem exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed
         exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed hsurface.2]
   | bitAnd a b | bitOr a b | bitXor a b
   | shl a b | shr a b | slt a b | sgt a b | sdiv a b | smod a b | sar a b
-  | signextend a b | min a b | max a b | ceilDiv a b =>
+  | byte a b | signextend a b | min a b | max a b | ceilDiv a b =>
       simp only [exprTouchesUnsupportedContractSurface, Bool.or_eq_false_iff] at hsurface
       simp [exprTouchesUnsupportedHelperSurface,
         exprTouchesUnsupportedHelperSurface_eq_false_of_contractSurfaceClosed hsurface.1,
@@ -4492,7 +4492,7 @@ private theorem exprUsesArrayElement_eq_false_of_coreClosed
   | bitAnd a b | bitOr a b | bitXor a b
   | min a b | max a b | ceilDiv a b
   | wMulDown a b | wDivUp a b
-  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | signextend a b =>
+  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | byte a b | signextend a b =>
       simp only [exprTouchesUnsupportedCoreSurface, Bool.or_eq_false_iff] at hcore
       simp [exprUsesArrayElement,
         exprUsesArrayElement_eq_false_of_coreClosed hcore.1,
@@ -4540,7 +4540,7 @@ private theorem exprUsesStorageArrayElement_eq_false_of_coreClosed
   | bitAnd a b | bitOr a b | bitXor a b
   | min a b | max a b | ceilDiv a b
   | wMulDown a b | wDivUp a b
-  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | signextend a b =>
+  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | byte a b | signextend a b =>
       simp only [exprTouchesUnsupportedCoreSurface, Bool.or_eq_false_iff] at hcore
       simp [exprUsesStorageArrayElement,
         exprUsesStorageArrayElement_eq_false_of_coreClosed hcore.1,
@@ -4590,7 +4590,7 @@ private theorem exprUsesDynamicBytesEq_eq_false_of_coreClosed
   | bitAnd a b | bitOr a b | bitXor a b
   | min a b | max a b | ceilDiv a b
   | wMulDown a b | wDivUp a b
-  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | signextend a b =>
+  | slt a b | sgt a b | sdiv a b | smod a b | sar a b | byte a b | signextend a b =>
       simp only [exprTouchesUnsupportedCoreSurface, Bool.or_eq_false_iff] at hcore
       simp [exprUsesDynamicBytesEq,
         exprUsesDynamicBytesEq_eq_false_of_coreClosed hcore.1,
@@ -4634,7 +4634,7 @@ private theorem exprCompileCore_usesArrayElement_false
     | min _ _ ihL ihR | max _ _ ihL ihR | ceilDiv _ _ ihL ihR
     | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprUsesArrayElement, ihL, ihR, Bool.false_or]
   | mulDivDown _ _ _ ihA ihB ihC | mulDivUp _ _ _ ihA ihB ihC =>
       simp only [exprUsesArrayElement, ihA, ihB, ihC, Bool.false_or]
@@ -4662,7 +4662,7 @@ private theorem exprCompileCore_usesStorageArrayElement_false
     | min _ _ ihL ihR | max _ _ ihL ihR | ceilDiv _ _ ihL ihR
     | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprUsesStorageArrayElement, ihL, ihR, Bool.false_or]
   | mulDivDown _ _ _ ihA ihB ihC | mulDivUp _ _ _ ihA ihB ihC =>
       simp only [exprUsesStorageArrayElement, ihA, ihB, ihC, Bool.false_or]
@@ -4690,7 +4690,7 @@ private theorem exprCompileCore_usesDynamicBytesEq_false
     | min _ _ ihL ihR | max _ _ ihL ihR | ceilDiv _ _ ihL ihR
     | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprUsesDynamicBytesEq, ihL, ihR, Bool.false_or]
   | mulDivDown _ _ _ ihA ihB ihC | mulDivUp _ _ _ ihA ihB ihC =>
       simp only [exprUsesDynamicBytesEq, ihA, ihB, ihC, Bool.false_or]
@@ -5335,7 +5335,7 @@ private theorem exprCompileCore_usesMulDiv512_false
     | min _ _ ihL ihR | max _ _ ihL ihR | ceilDiv _ _ ihL ihR
     | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprUsesMulDiv512, ihL, ihR, Bool.false_or]
   | mulDivDown _ _ _ ihA ihB ihC | mulDivUp _ _ _ ihA ihB ihC =>
       simp only [exprUsesMulDiv512, ihA, ihB, ihC, Bool.false_or]
@@ -5363,7 +5363,7 @@ private theorem exprCompileCore_usesParamDynamicHeadWord_false
     | min _ _ ihL ihR | max _ _ ihL ihR | ceilDiv _ _ ihL ihR
     | wMulDown _ _ ihL ihR | wDivUp _ _ ihL ihR
     | slt _ _ ihL ihR | sgt _ _ ihL ihR | sdiv _ _ ihL ihR
-    | smod _ _ ihL ihR | sar _ _ ihL ihR | signextend _ _ ihL ihR =>
+    | smod _ _ ihL ihR | sar _ _ ihL ihR | byte _ _ ihL ihR | signextend _ _ ihL ihR =>
       simp only [exprUsesParamDynamicHeadWord, ihL, ihR, Bool.false_or]
   | mulDivDown _ _ _ ihA ihB ihC | mulDivUp _ _ _ ihA ihB ihC =>
       simp only [exprUsesParamDynamicHeadWord, ihA, ihB, ihC, Bool.false_or]

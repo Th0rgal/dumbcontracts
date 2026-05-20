@@ -2504,6 +2504,14 @@ input:focus-visible,
   font-size: 0.875rem;
   color: var(--verity-color-muted, #6b7c7c);
   border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  position: relative;
+  z-index: 10;
+  background: var(--verity-bg);
+}
+@media (min-width: 768px) {
+  .verity-footer {
+    padding-left: max(var(--nextra-sidebar-width, 260px), 1rem);
+  }
 }
 .verity-footer a {
   color: inherit;

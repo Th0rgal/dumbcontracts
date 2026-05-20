@@ -30,10 +30,12 @@ authority. It still uses legacy/reference code in three narrower ways:
    but are still named "legacy" because they bridge current helper-free compiled
    IR into the newer helper-aware interfaces.
 
-The largest remaining cleanup opportunity is to replace the builtin comparison
-oracle stack with direct EVMYulLean builtin facts consumed by the closure proofs.
-Until that is done, removing `ReferenceOracle/Builtins.lean` or
-`EvmYulLeanBridgeLemmas.lean` would break current proof imports.
+The largest remaining cleanup opportunity is to finish demoting the builtin
+comparison oracle stack to conformance-only coverage. `IRGeneration/FunctionBody.lean`
+now consumes direct EVMYulLean builtin facts, so `ReferenceOracle/Builtins.lean`
+is no longer on that production proof import path. Removing it outright would
+still break the legacy bridge test, the bridge lemma module, and axiom-report
+coverage.
 
 ## Current Inventory
 
@@ -46,8 +48,8 @@ Until that is done, removing `ReferenceOracle/Builtins.lean` or
 | Bridge predicates | `EvmYulLeanBridgePredicates.lean` | Keep for now | Current body closure and native harness consume `BridgedExpr`, `BridgedStmts`, and related admissibility predicates. |
 | Body closure | `EvmYulLeanBodyClosure.lean` | Keep | Imported by EndToEnd and proves supported source bodies satisfy native bridge predicates. |
 | Source/call closure | `EvmYulLeanSourceExprClosure.lean`, `EvmYulLeanCallClosure.lean` | Keep or demote to development-only after checking `PrintAxioms` policy | Source closure is imported by body closure. Call closure is only imported by `PrintAxioms.lean` and docs in this audit. |
-| Builtin reference oracle | `ReferenceOracle/Builtins.lean` | Keep until replaced | Directly imported by `EvmYulLeanBridgeLemmas.lean` and `EvmYulLeanBridgeTest.lean`; defines `legacyEvalBuiltinCall*` and backend comparison dispatch. |
-| Builtin bridge lemmas | `EvmYulLeanBridgeLemmas.lean` | Keep until replaced | Proves EVMYulLean builtin behavior agrees with legacy builtin formulas; imported by `IRGeneration/FunctionBody.lean`, bridge tests, and `PrintAxioms.lean`. |
+| Builtin reference oracle | `ReferenceOracle/Builtins.lean` | Keep as conformance/reporting scaffolding until replaced | Directly imported by `EvmYulLeanBridgeLemmas.lean`, `EvmYulLeanBridgeTest.lean`, and `PrintAxioms.lean`; defines `legacyEvalBuiltinCall*` and backend comparison dispatch. |
+| Builtin bridge lemmas | `EvmYulLeanBridgeLemmas.lean` | Keep as conformance/reporting scaffolding until replaced | Proves EVMYulLean builtin behavior agrees with legacy builtin formulas; imported by bridge tests and `PrintAxioms.lean`, but no longer by `IRGeneration/FunctionBody.lean`. |
 | Builtin bridge test | `EvmYulLeanBridgeTest.lean` | Keep as conformance test, or move under a test-only namespace | Referenced by `Makefile` and fork conformance workflow. No production proof imports it. |
 | Reference state re-export | removed | Removed in the cleanup PR | It had no direct imports and only re-exported `RuntimeTypes`. |
 | Removed retarget stack | `EvmYulLeanRetarget.lean`, older adapter-correctness modules | Already removed | Only mentioned in docs/comments. |
@@ -74,9 +76,11 @@ Direct imports found in the current tree:
   - `EvmYulLeanBridgeTest`
   - `PrintAxioms`
 - `EvmYulLeanBridgeLemmas.lean` is imported by:
-  - `Compiler.Proofs.IRGeneration.FunctionBody`
   - `EvmYulLeanBridgeTest`
   - `PrintAxioms`
+- `IRGeneration/FunctionBody.lean` imports direct native builtin semantics:
+  - `EvmYulLeanBuiltinSemantics`
+  - `EvmYulLeanPureBuiltinLemmas`
 - `EvmYulLeanBodyClosure.lean` is imported by:
   - `Compiler.Proofs.EndToEnd`
   - `PrintAxioms`
@@ -129,7 +133,7 @@ remains part of Layer 3. A precise statement is:
 
 ### `ReferenceOracle/Builtins.lean`
 
-Keep for now. It contains:
+Keep for now as conformance/reporting scaffolding. It contains:
 
 - `legacyEvalBuiltinCallWithContext`
 - `BuiltinBackend.verity`
@@ -137,16 +141,17 @@ Keep for now. It contains:
 - `evalBuiltinCallWithBackendContext`
 - compatibility simplification lemmas for builtin evaluation
 
-This is not the public EndToEnd target, but the bridge lemma layer still proves
-native EVMYulLean builtin behavior by comparing it to these legacy formulas.
-Safe removal requires replacing all downstream uses of `legacyEvalBuiltinCall*`
-with direct EVMYulLean facts.
+This is not the public EndToEnd target. The bridge lemma layer still proves
+native EVMYulLean builtin behavior by comparing it to these legacy formulas, but
+the production `FunctionBody.lean` proof now consumes direct native builtin
+facts instead. Safe removal requires moving the remaining comparison coverage to
+tests or deleting it from `PrintAxioms.lean`.
 
 ### `EvmYulLeanBridgeLemmas.lean`
 
-Keep for now. It is the main consumer of `ReferenceOracle/Builtins.lean` and is
-still imported by `IRGeneration/FunctionBody.lean`. It supplies the builtin
-agreement facts that current body and function proofs rely on.
+Keep for now as conformance/reporting scaffolding. It is the main consumer of
+`ReferenceOracle/Builtins.lean`, but it is no longer imported by
+`IRGeneration/FunctionBody.lean`.
 
 The cleanup path is to split this file into:
 
@@ -154,8 +159,10 @@ The cleanup path is to split this file into:
 - temporary legacy-comparison facts;
 - a small compatibility module imported only by tests or historical proofs.
 
-Once `FunctionBody.lean` consumes only direct native facts, the legacy comparison
-module can be dropped from the proof dependency path.
+`FunctionBody.lean` now consumes direct native facts from
+`EvmYulLeanBuiltinSemantics.lean` and `EvmYulLeanPureBuiltinLemmas.lean`; the
+remaining work is to decide whether the legacy comparison module should remain
+as test coverage or leave the axiom-report target entirely.
 
 ### `EvmYulLeanBridgePredicates.lean`
 

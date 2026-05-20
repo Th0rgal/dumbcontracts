@@ -778,27 +778,7 @@ EVMYulLean UInt256 semantics on all inputs. -/
       some (Verity.Core.Uint256.byte
         (Verity.Core.Uint256.ofNat (index % evmModulus))
         (Verity.Core.Uint256.ofNat (value % evmModulus))).val := by
-  have hindexMod :
-      index % evmModulus % Verity.Core.Uint256.modulus = index % evmModulus := by
-    simp [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS, evmModulus]
-  have hvalueMod :
-      value % evmModulus % Verity.Core.Uint256.modulus = value % evmModulus := by
-    simp [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS, evmModulus]
-  simp [evalBuiltinCallViaEvmYulLean, Verity.Core.Uint256.byte, hindexMod, hvalueMod]
-  rw [← evalBuiltinCall_byte_bridge storage sender selector calldata index value]
-  simp [legacyEvalBuiltinCall, legacyEvalBuiltinCallWithContext]
-  by_cases hgt : 31 < index % evmModulus
-  · simp [hgt]
-  · simp [hgt, Nat.shiftRight_eq_div_pow]
-    rw [show (255 : Nat) = 2 ^ 8 - 1 by omega]
-    rw [Nat.and_two_pow_sub_one_eq_mod]
-    rw [show (2 ^ 8 : Nat) = 256 by norm_num]
-    have hlt :
-        (value % evmModulus / 2 ^ ((31 - index % evmModulus) * 8)) %
-          256 < Verity.Core.Uint256.modulus :=
-      Nat.lt_trans (Nat.mod_lt _ (by decide : 0 < 256))
-        (by norm_num [Verity.Core.Uint256.modulus, Verity.Core.UINT256_MODULUS])
-    rw [Nat.mod_eq_of_lt hlt]
+  simp [evalBuiltinCallViaEvmYulLean, evmModulus]
 
 /-- Context wrapper for `evalBuiltinCallViaEvmYulLean_byte_uint256`. -/
 @[simp] theorem evalBuiltinCallWithEvmYulLeanContext_byte_uint256

@@ -5504,6 +5504,9 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_not_native
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shl_native
   Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_shr_native
+  -- Compiler.Proofs.YulGeneration.Backends.nat_land_0xFF  -- private
+  -- Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_byte_normalized  -- private
+  Compiler.Proofs.YulGeneration.Backends.evalPureBuiltinViaEvmYulLean_byte_native
 
   -- Compiler/Proofs/YulGeneration/Backends/EvmYulLeanSignedArithSpec.lean
   Compiler.Proofs.YulGeneration.Backends.SignedArithSpec.specSignBit_lt_specModulus
@@ -5636,4 +5639,4 @@ end Verity.AxiomAudit
   Compiler.Proofs.YulGeneration.YulTransaction.ofIR_args
 ]
 
--- Total: 5350 theorems/lemmas (3639 public, 1711 private, 0 sorry'd)
+-- Total: 5353 theorems/lemmas (3640 public, 1713 private, 0 sorry'd)
